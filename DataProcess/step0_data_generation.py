@@ -103,7 +103,7 @@ mapping = {1001:1, 2001:1, 3001:1, 4001:1,
            1002:2, 2002:2, 3002:2, 4002:2,
            1003:3, 2003:3, 3003:3, 4003:3,
            2004:4, 3004:4, 5:3, 6:5}
-ethnicity_0 = alcohol.map(mapping)
+ethnicity_0 = ethnicity.map(mapping)
 del mapping
 print(ethnicity_0.value_counts(dropna=False))  # Check value
 
