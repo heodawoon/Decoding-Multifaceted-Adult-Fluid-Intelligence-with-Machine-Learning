@@ -555,8 +555,9 @@ def compute_met_no_row_drop(df, exclude_extreme_outliers=True):
 
     - Keeps all rows (N fixed)
     - For duration columns: values <10 minutes set to 0 (IPAQ rule)
-    - Negative codes (-1, -3) treated as NaN
-    - If at least one of walk/mod/vig has a valid response,
+    - Codes -1, -3 (do not know / prefer not to answer) => treated as missing
+      → if they appear in ANY of the 6 fields in a row, that row's MET_* are set to NaN
+    - If at least one of walk/mod/vig has a valid response (not NaN, not -1/-3),
       missing values in the other activities are replaced with 0.
     - Truncate: days [0,7], minutes/day [0,180]
     - Extreme cases (total daily minutes > 960) masked as NaN
@@ -565,9 +566,13 @@ def compute_met_no_row_drop(df, exclude_extreme_outliers=True):
     day_cols = ['864-2.0', '884-2.0', '904-2.0']  # walk/mod/vig days per week
     dur_cols = ['874-2.0', '894-2.0', '914-2.0']  # walk/mod/vig minutes per day
     cols = day_cols + dur_cols
+
     out = df[cols].copy()
 
-    # 1) Replace negative codes with NaN
+    # (0) Mark rows where -1 or -3 appears in any of the six activity fields
+    had_neg_code = out.isin([-1, -3]).any(axis=1)
+
+    # 1) -1, -3 → NaN
     out = out.replace([-1, -3], np.nan)
 
     # 1-2) Check how many rows have all 6 columns missing after code replacement
@@ -598,7 +603,9 @@ def compute_met_no_row_drop(df, exclude_extreme_outliers=True):
     out["MET_vig"]  = VIG_MET  * out['914-2.0'] * out['904-2.0']
 
     # 6) MET_total = sum of 3 METs (NaN if all missing)
-    out["MET_total"] = out[["MET_walk","MET_mod","MET_vig"]].sum(axis=1, skipna=True, min_count=1)
+    out["MET_total"] = out[["MET_walk","MET_mod","MET_vig"]].sum(axis=1,
+                                                                 skipna=True,
+                                                                 min_count=1)
 
     # 7) Extreme cases (total daily minutes > 960) masked as NaN
     if exclude_extreme_outliers:
@@ -613,6 +620,9 @@ def compute_met_no_row_drop(df, exclude_extreme_outliers=True):
     n_all_missing_final = all_missing_final.sum()
     print(f"[INFO] Number of subjects with all activity fields missing at the end: {n_all_missing_final}")
 
+    # (9) Force MET_* values to NaN for all rows that originally contained -1 or -3
+    out.loc[had_neg_code, ["MET_walk", "MET_mod", "MET_vig", "MET_total"]] = np.nan
+
     # Optional summary print
     n_valid_met = out["MET_total"].notna().sum()
     print(f"[INFO] Number of subjects with valid MET_total: {n_valid_met}")
@@ -620,10 +630,11 @@ def compute_met_no_row_drop(df, exclude_extreme_outliers=True):
     print("=== [DEBUG CHECK] ===")
     print(f"Total NaN count across all columns: {out.isna().sum().sum()}")
     print(f"Rows with all input cols NaN: {out[cols].isna().all(axis=1).sum()}")
-    print(
-        f"Rows with all MET outputs NaN: {out[['MET_walk', 'MET_mod', 'MET_vig', 'MET_total']].isna().all(axis=1).sum()}")
+    print(f"Rows with all MET outputs NaN: {out[['MET_walk','MET_mod','MET_vig','MET_total']].isna().all(axis=1).sum()}")
     print("======================")
+
     return out
+
 
 act_df = pd.DataFrame({
     "864-2.0": total_df['864-2.0'],
