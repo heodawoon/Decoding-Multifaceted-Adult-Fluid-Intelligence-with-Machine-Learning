@@ -573,7 +573,7 @@ def compute_met_no_row_drop(df, exclude_extreme_outliers=True):
     had_neg_code = out.isin([-1, -2, -3]).any(axis=1)
 
     # 1) -1, -3 → NaN
-    out = out.replace([-1, -3], np.nan)
+    out = out.replace([-1, -2, -3], np.nan)
 
     # 1-2) Check how many rows have all 6 columns missing after code replacement
     all_missing_initial = out.isna().all(axis=1)
