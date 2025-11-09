@@ -28,7 +28,7 @@ csv_path = os.path.join(root_path, 'Step2', 'Step2_1_ukb669045_disease_timing_re
 save_root = os.path.join(root_path, 'Step3')
 os.makedirs(save_root, exist_ok=True)
 
-csv_path_out = os.path.join(save_root, 'Step3_ukb669045_remove_brain_related_disease.csv')
+csv_path_out = os.path.join(save_root, 'Step3_ukb669045_remove_brain_related_disease_subjects.csv')
 
 # Brain-related disease list
 # Diseases of the nervous system (ICD-10: G00–G99)
