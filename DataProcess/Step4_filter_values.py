@@ -12,18 +12,18 @@ Inputs:
 
 Outputs:
 (1) Top/bottom 10% fluid intelligence subset
-- step4_1_extract_percentile_fluid_top_bottom_10_percent.csv
+- Step4_1_extract_percentile_fluid_top_bottom_10_percent.csv
 
 (2) After removing disease columns with zero prevalence
-- step4_2_remove_disease_columns_with_summation_zero.csv
+- Step4_2_remove_disease_columns_with_summation_zero.csv
 
 (3) After additionally removing disease columns with <0.1% prevalence
     (subjects are retained; only rare disease columns are dropped)
-- step4_3_remove_disease_column_with_01_percent_in_population_remaining_subject.csv
+- Step4_3_remove_disease_column_with_01_percent_in_population_remaining_subject.csv
 
 (4) Final dataset with binarized disease indicators
     (1.0 and 1.5 -> 1; 0.0 and 2.0 -> 0)
-- step4_4_binarize_disease_column.csv
+- Step4_4_binarize_disease_column.csv
 """
 
 
