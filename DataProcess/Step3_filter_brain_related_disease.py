@@ -17,7 +17,7 @@ Inputs:
 Outputs:
 - Step3_ukb669045_remove_brain_related_disease_subjects.csv
   (subjects with any brain-related disease before or at imaging removed)
-- Step3_removed_brain_related_subjects.csv
+- Step3_ukb669045_removed_brain_related_subjects.csv
   (list of subjects removed with their brain-related disease timings)
 """
 
@@ -33,7 +33,7 @@ save_root = os.path.join(root_path, 'Step3')
 os.makedirs(save_root, exist_ok=True)
 
 csv_path_out = os.path.join(save_root, 'Step3_ukb669045_remove_brain_related_disease_subjects.csv')
-removed_path = os.path.join(save_root, 'Step3_removed_brain_related_subjects.csv')
+removed_path = os.path.join(save_root, 'Step3_ukb669045_removed_brain_related_subjects.csv')
 
 # Brain-related disease list
 # Diseases of the nervous system (ICD-10: G00–G99)
