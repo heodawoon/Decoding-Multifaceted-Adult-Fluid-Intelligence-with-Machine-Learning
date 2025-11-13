@@ -56,8 +56,8 @@ del mapping
 ##### Age
 print('======================= Age')
 # Extract birth date (field 34-0.0) and visit date (field 53-2.0)
-birth = pd.to_datetime(total_df['34-0.0'], errors="coerce")   # YYYYMMDD
-visit = pd.to_datetime(total_df['53-2.0'], errors="coerce")   # Visit date
+birth = total_df['34-0.0']   # YYYY
+visit = pd.to_datetime(total_df['53-2.0'], errors="coerce")   # Visit date YYYYMMDD
 
 # Check NaN values
 # If there are NaN only in the birth information, but not in the visit date information
@@ -69,7 +69,7 @@ visit_only_nan = visit.isna() & birth.notna()
 print(f"The number of NaN values only in the visit date column: {visit_only_nan.sum()}")
 
 # Compute rough age (year difference between imaging visit year and birth year)
-age_2 = visit.dt.year - birth.dt.year
+age_2 = visit.dt.year - birth
 # TODO: optionally plot the distribution of age_2 here
 
 # Convert visit date (YYYYMMDD) into integer format (NaT → NaN handled via fillna)
