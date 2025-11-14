@@ -103,8 +103,8 @@ use_other_cols = [c for c in total_use_variables if c in other_df.columns]
 total_subject = other_df[use_other_cols].copy()
 
 # Left/right cortical thickness index
-left_index  = np.arange(26755, 26788+1)   # 26755 ~ 26788
-right_index = np.arange(26856, 26889+1)   # 26856 ~ 26889
+left_index  = np.arange(26756, 26788+1)   # 26755 ~ 26788
+right_index = np.arange(26857, 26889+1)   # 26856 ~ 26889
 left_cols  = [f"{idx}-2.0" for idx in left_index]
 right_cols = [f"{idx}-2.0" for idx in right_index]
 
