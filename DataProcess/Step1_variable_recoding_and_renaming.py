@@ -655,8 +655,8 @@ print(met_2.value_counts(bins=10, dropna=False))
 ### Cortical thickness
 print('======================= Brain (Cortical thickness)')
 # Define index ranges for left and right hemisphere cortical thickness fields
-left_index = np.arange(26755, 26788+1)
-right_index = np.arange(26856, 26889+1)
+left_index = np.arange(26756, 26788+1)
+right_index = np.arange(26857, 26889+1)
 
 # Convert indices to strings and append '-2.0' to indicate the MRI visit instance
 left_cols = [f"{str(idx)}-2.0" for idx in left_index]
