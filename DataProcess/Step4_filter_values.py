@@ -24,6 +24,9 @@ Outputs:
 (4) Final dataset with binarized disease indicators
     (1.0 and 1.5 -> 1; 0.0 and 2.0 -> 0)
 - Step4_4_binarize_disease_column.csv
+
+(5) Final disease count per disease
+- Step4_5_disease_subject_count.csv
 """
 
 
@@ -32,16 +35,17 @@ import pandas as pd
 import numpy as np
 
 # ---------- Config ----------
-root_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/FinalFinal_Version_1108'
+root_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/Final_Version_for_Git'
 
 csv_path = os.path.join(root_path, 'Step3', 'Step3_ukb669045_remove_brain_related_disease_subjects.csv')
 save_root = os.path.join(root_path, 'Step4')
 os.makedirs(save_root, exist_ok=True)
 
-out_percentile    = os.path.join(save_root, 'Step4_1_extract_percentile_fluid_top_bottom_10_percent.csv')
-out_drop_zero     = os.path.join(save_root, 'Step4_2_remove_disease_columns_with_summation_zero.csv')
-out_drop_0p1_3    = os.path.join(save_root, 'Step4_3_remove_disease_column_with_01_percent_in_population_remaining_subject.csv')
-out_binarize      = os.path.join(save_root, 'Step4_4_binarize_disease_column.csv')
+out_percentile              = os.path.join(save_root, 'Step4_1_extract_percentile_fluid_top_bottom_10_percent.csv')
+out_drop_zero               = os.path.join(save_root, 'Step4_2_remove_disease_columns_with_summation_zero.csv')
+out_drop_0p1_3              = os.path.join(save_root, 'Step4_3_remove_disease_column_with_01_percent_in_population_remaining_subject.csv')
+out_binarize                = os.path.join(save_root, 'Step4_4_binarize_disease_column.csv')
+csv_path_disease_number_out = os.path.join(save_root, 'Step4_5_disease_subject_count.csv')
 
 # Other information
 final_cols = ["eid", "gender", "age_2", "ethnicity_0", "marital_2",                      # Demographic
@@ -144,3 +148,20 @@ if nonzero_cols:
 
 else:
     print("Skip rare-disease filtering and binarization: no nonzero disease columns present.")
+
+# Check the presence of disease
+out = df_group_bin[common_cols].copy()
+out_sum_check = np.zeros(out.shape, dtype=int)
+out_sum_check[(out > 0)] = 1
+out_sum = out_sum_check.sum(axis=0).astype(np.int32)
+print("Number of subjects with disease before or at imaging (per code):")
+print(out_sum)
+
+# Disease presence matrix (subject × disease), BEFORE or AT imaging only
+out_has = (out > 0).astype(int)
+
+# For each disease, count how many subjects have the disease
+n_subj_per_disease = out_has.sum(axis=0).astype(int)
+
+df_out_numb = pd.DataFrame([n_subj_per_disease], columns=common_cols)
+df_out_numb.to_csv(csv_path_disease_number_out, index=False)
