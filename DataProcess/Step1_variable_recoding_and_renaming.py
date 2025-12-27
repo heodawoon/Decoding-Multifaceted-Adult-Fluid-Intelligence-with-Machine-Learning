@@ -8,7 +8,7 @@ variables.
 
 Input
 ------
-- Step0_2_ukb669045_total_data_with_complete_cortical_thickness.csv
+- Step0_2_ukb669045_total_data_with_complete_fractional_anisotropy.csv
 
 Outputs
 -------
@@ -27,8 +27,8 @@ import os, re
 import pandas as pd
 import numpy as np
 
-total_csv_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/FinalFinal_Version_1108/Step0/Step0_2_ukb669045_total_data_with_complete_cortical_thickness.csv'
-save_root = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/FinalFinal_Version_1108/Step1'
+total_csv_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB_Final/Final_Version_for_Git/Step0/Step0_2_ukb669045_total_data_with_complete_fractional_anisotropy.csv'
+save_root = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB_Final/Final_Version_for_Git/Step1'
 os.makedirs(save_root, exist_ok=True)
 save_reverse_code = os.path.join(save_root, 'Step1_1_ukb669045_reverse_coding_recoding_renaming.csv')
 save_reverse_code_count = os.path.join(save_root, "Step1_2_ukb669045_variable_recoding_and_renaming_value_counts.xlsx")
@@ -70,6 +70,7 @@ print(f"The number of NaN values only in the visit date column: {visit_only_nan.
 
 # Compute rough age (year difference between imaging visit year and birth year)
 age_2 = visit.dt.year - birth
+# TODO: optionally plot the distribution of age_2 here
 
 # Convert visit date (YYYYMMDD) into integer format (NaT → NaN handled via fillna)
 visit_yr_2 = visit.dt.strftime("%Y%m%d").fillna("0").astype(int)
@@ -104,6 +105,7 @@ print(f"Unique values in the original sleep duration column: {np.unique(sleep_2)
 sleep_2 = sleep_2.replace([-1, -3], np.nan)
 print(f"Unique values after recoding sleep duration: {np.unique(sleep_2)}")
 print(sleep_2.value_counts(dropna=False))  # Check value counts
+# TODO: optionally plot the distribution of sleep_2 here
 
 
 ##### Alcohol intake
@@ -409,14 +411,20 @@ ed = total_df['6138-2.0']
 print(f"Unique values in the original education column: {np.unique(ed)}")
 
 mapping = {1: 20, 2: 13, 3: 10, 4: 10, 5: 19, 6: 15, -7: 7}
-ed_yr_2 = ed.replace(mapping)
+mapping_b = {1: 1, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, -7: 0}
+
+ed_yr_2 = ed.copy().replace(mapping)
+ed_b_2  = ed.copy().replace(mapping_b)
 
 # Note: -3 (prefer not to answer) are treated as NaN
 ed_yr_2 = ed_yr_2.replace([-3], np.nan)
+ed_b_2  = ed_b_2.replace([-3], np.nan)
 
 print("Value counts after mapping to education years:")
 print(ed_yr_2.value_counts(dropna=False))  # Check value counts
-del mapping
+print("Value counts after mapping to binarized education:")
+print(ed_b_2.value_counts(dropna=False))  # Check value counts
+del mapping, mapping_b
 
 
 ##### How are people in household related to participant
@@ -534,6 +542,7 @@ N_fam_2 = N_fam_2.replace([-1, -3], np.nan)
 
 print("Value counts for the number in household:")
 print(N_fam_2.value_counts(dropna=False))  # Check value counts
+# TODO: optionally plot the distribution of N_fam_2 here
 
 
 ##### Average total household income before tax
@@ -649,43 +658,31 @@ print(met_2.describe())
 print(met_2.value_counts(bins=10, dropna=False))
 
 
-### Cortical thickness
-print('======================= Brain (Cortical thickness)')
-# Define index ranges for left and right hemisphere cortical thickness fields
-left_index = np.arange(26756, 26788+1)
-right_index = np.arange(26857, 26889+1)
+### Fractional Anisotropy
+print('======================= Brain (Fractional Anisotropy)')
+# Define index ranges for left and right hemisphere fractional anisotropy fields
+brain_index  = np.arange(25056, 25103+1)   # 26755 ~ 26788
+brain_cols  = [f"{idx}-2.0" for idx in brain_index]
 
-# Convert indices to strings and append '-2.0' to indicate the MRI visit instance
-left_cols = [f"{str(idx)}-2.0" for idx in left_index]
-right_cols = [f"{str(idx)}-2.0" for idx in right_index]
-
-# Check if all expected columns exist in the dataset
-missing_left = [c for c in left_cols if c not in total_df.columns]
-missing_right = [c for c in right_cols if c not in total_df.columns]
-if missing_left:
-    print(f"[WARN] Missing left hemisphere columns: {len(missing_left)} (e.g., {missing_left[:3]}...)")
-if missing_right:
-    print(f"[WARN] Missing right hemisphere columns: {len(missing_right)} (e.g., {missing_right[:3]}...)")
+missing_brain = [c for c in brain_cols if c not in total_df.columns]
+if missing_brain:
+    print(f"[WARN] Missing left hemisphere columns: {len(missing_brain)} (e.g., {missing_brain[:3]}...)")
 
 # Extract hemisphere-specific columns
-left_h = total_df[["eid"] + [c for c in left_cols if c in total_df.columns]].copy()
-right_h = total_df[["eid"] + [c for c in right_cols if c in total_df.columns]].copy()
+brain_hemisphere = total_df[["eid"] + [c for c in brain_cols if c in total_df.columns]].copy()
 
-# Merge left and right hemispheres into a single DataFrame
-brain_hemisphere = pd.merge(left_h, right_h, on="eid", how="left")
-
-# Check average missing rate across cortical thickness columns
+# Check average missing rate across fractional anisotropy columns
 hemi_cols = [c for c in brain_hemisphere.columns if c != "eid"]
 nan_ratio = brain_hemisphere[hemi_cols].isna().mean().mean()
-print(f"Average missing rate across cortical thickness columns: {nan_ratio:.2%}")
+print(f"Average missing rate across fractional anisotropy columns: {nan_ratio:.2%}")
 
 
 ##### Concatenate all variables into a single DataFrame
 # social_act_2_cat1..5 correspond to:
 # 1: sport, 2: pub, 3: religious, 4: education, 5: other
 all_vars = [eid, visit_yr_2, gender, age_2, ethnicity_0, marital_2,        # Demographic
-            ed_yr_2, emp_2, income_fam_2, fncl_sat_2, hthcare_2,           # Socioeconomic
-            lone_2, social_act_n_2, social_act_2_cat1,  # Network
+            ed_yr_2, ed_b_2, emp_2, income_fam_2, fncl_sat_2, hthcare_2,   # Socioeconomic
+            lone_2, social_act_n_2, social_act_2_cat1,                     # Network
             social_act_2_cat2, social_act_2_cat3, social_act_2_cat4,       # Network
             social_act_2_cat5,                                             # Network
             freq_visit_2, confide_2, fam_sat_2, frnd_sat_2, N_fam_2,       # Network
@@ -696,8 +693,8 @@ all_vars = [eid, visit_yr_2, gender, age_2, ethnicity_0, marital_2,        # Dem
             fluid_2]                                                       # Cognition
 
 all_var_names = ["eid", "visit_yr_2", "gender", "age_2", "ethnicity_0", "marital_2",        # Demographic
-                 "ed_yr_2", "emp_2", "income_fam_2", "fncl_sat_2", "hthcare_2",             # Socioeconomic
-                 "lone_2", "social_act_n_2", "social_act_2_sport",     # Network
+                 "ed_yr_2", "ed_b_2", "emp_2", "income_fam_2", "fncl_sat_2", "hthcare_2",   # Socioeconomic
+                 "lone_2", "social_act_n_2", "social_act_2_sport",                          # Network
                  "social_act_2_pub", "social_act_2_religious", "social_act_2_education",    # Network
                  "social_act_2_other",                                                      # Network
                  "freq_visit_2", "confide_2", "fam_sat_2", "frnd_sat_2", "N_fam_2",         # Network
@@ -719,8 +716,8 @@ print("Head of the final DataFrame:")
 print(final_df.head())
 
 final_df = final_df.merge(brain_hemisphere, on="eid", how="left")
-print("DataFrame shape after adding cortical thickness:", final_df.shape)
-print("Head of the DataFrame after adding cortical thickness:")
+print("DataFrame shape after adding fractional anisotropy:", final_df.shape)
+print("Head of the DataFrame after adding fractional anisotropy:")
 print(final_df.head())
 
 
