@@ -1,23 +1,23 @@
 '''
 Code for data organization
 
-1) Merge all datasets (i.e., demographic, socioeconomic, cortical thickness, disease (first occurrence), and other variables).
-2) Extract subjects with no missing values in cortical thickness columns.
+1) Merge all datasets (i.e., demographic, socioeconomic, fractional anisotropy, disease (first occurrence; ICD-10-based), and other variables).
+2) Extract subjects with no missing values in fractional anisotropy columns.
 
 Output:
 1) Total merged data: Step0_1_ukb669045_total_merged_data_demo_brain_disease.csv
-2) Refined data (no missing values in cortical thickness): Step0_2_ukb669045_total_data_with_complete_cortical_thickness.csv
+2) Refined data (no missing values in fractional anisotropy): Step0_2_ukb669045_total_data_with_complete_fractional_anisotropy.csv
 '''
 
 import os
 import pandas as pd
 import numpy as np
 
-other_csv_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/FinalFinal_Version_1108/ukb669045_250926_sohyun_1.csv'
-brain_csv_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/FinalFinal_Version_1108/ukb669045_250926_sohyun_2.csv'
-disease_csv_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/FinalFinal_Version_1108/ukb669045_251002_sohyun.csv'
-disease_csv_path2 = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/FinalFinal_Version_1108/ukb669045_251004_sohyun.csv'
-save_root = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/FinalFinal_Version_1108/Step0'
+other_csv_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/ukb669045_250926_sohyun_1.csv'
+brain_csv_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/ukb669045_250926_sohyun_2.csv'
+disease_csv_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/ukb669045_251002_sohyun.csv'
+disease_csv_path2 = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/ukb669045_251004_sohyun.csv'
+save_root = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB_Final/Final_Version_for_Git/Step0'
 os.makedirs(save_root, exist_ok=True)
 
 # Read csv files
@@ -102,28 +102,26 @@ if missing_other:
 use_other_cols = [c for c in total_use_variables if c in other_df.columns]
 total_subject = other_df[use_other_cols].copy()
 
-# Left/right cortical thickness index
-left_index  = np.arange(26756, 26788+1)   # 26755 ~ 26788
-right_index = np.arange(26857, 26889+1)   # 26856 ~ 26889
-left_cols  = [f"{idx}-2.0" for idx in left_index]
-right_cols = [f"{idx}-2.0" for idx in right_index]
+# Left/right fractional anisotropy index
+fa_index  = np.arange(25056, 25103+1)   # 26755 ~ 26788
+# left_index  = np.arange(26756, 26788+1)   # 26755 ~ 26788
+# right_index = np.arange(26857, 26889+1)   # 26856 ~ 26889
 
-# Check for the presence of cortical thickness columns
-missing_left  = [c for c in left_cols  if c not in brain_df.columns]
-missing_right = [c for c in right_cols if c not in brain_df.columns]
-if missing_left:
-    print(f"[WARN] Some left cortical thickness columns are missing in brain_df: {missing_left[:5]}... (Total {len(missing_left)})")
-if missing_right:
-    print(f"[WARN] Some right cortical thickness columns are missing in brain_df: {missing_right[:5]}... (Total {len(missing_right)})")
+fa_cols  = [f"{idx}-2.0" for idx in fa_index]  # Fractional Anisotropy
+# left_cols  = [f"{idx}-2.0" for idx in left_index]  # cortical thickness (left)
+# right_cols = [f"{idx}-2.0" for idx in right_index]  # cortical thickness (right)
 
-use_left_cols  = ['eid'] + [c for c in left_cols if c in brain_df.columns]
-use_right_cols = ['eid'] + [c for c in right_cols if c in brain_df.columns]
+brain_cols = fa_cols #  + left_cols + right_cols
 
-left_h  = brain_df[use_left_cols].copy()
-right_h = brain_df[use_right_cols].copy()
+# Check for the presence of fractional anisotropy columns
+missing_brain  = [c for c in brain_cols  if c not in brain_df.columns]
+if missing_brain:
+    print(f"[WARN] Some left fractional anisotropy columns are missing in brain_df: {missing_brain[:5]}... (Total {len(missing_brain)})")
 
-# Merge the left and right cortical thickness
-brain_hemisphere = pd.merge(left_h, right_h, on='eid', how='outer')
+use_brain_cols  = ['eid'] + [c for c in brain_cols if c in brain_df.columns]
+
+# FA
+brain_hemisphere  = brain_df[use_brain_cols].copy()
 
 # Total subjects + brain information (missing brain data are filled with NaN)
 final_df = pd.merge(total_subject, brain_hemisphere, on='eid', how='left')
@@ -132,15 +130,15 @@ final_df.to_csv(os.path.join(save_root, 'Step0_1_ukb669045_total_merged_data_dem
 print('The total number of subjects:', len(final_df))
 print('Size:', final_df.shape)
 
-# Extract subjects that have both brain information (left and right cortical thickness).
+# Extract subjects that have both brain information (left and right fractional anisotropy).
 hemi_cols = [c for c in brain_hemisphere.columns if c != 'eid']
-print(f'The number of cortical thickness-related columns: {len(hemi_cols)}')
+print(f'The number of fractional anisotropy-related columns: {len(hemi_cols)}')
 brain_no_nan = brain_hemisphere.dropna(subset=hemi_cols)
 n_nan_rows = brain_hemisphere[hemi_cols].isna().any(axis=1).sum()
-print(f"The number of subjects with complete cortical thickness data: {len(brain_no_nan)}")
-print(f"The number of subjects with at least one missing cortical thickness value: {n_nan_rows}")
+print(f"The number of subjects with complete fractional anisotropy data: {len(brain_no_nan)}")
+print(f"The number of subjects with at least one missing fractional anisotropy value: {n_nan_rows}")
 
 final_brain_df = pd.merge(brain_no_nan, total_subject, on='eid', how='left')
 final_brain_df = pd.merge(final_brain_df, disease_df, on='eid', how='left')
-final_brain_df.to_csv(os.path.join(save_root, 'Step0_2_ukb669045_total_data_with_complete_cortical_thickness.csv'), index=False)
-print(f'The number of subjects with no missing values in cortical thickness: {len(final_brain_df)}')
+final_brain_df.to_csv(os.path.join(save_root, 'Step0_2_ukb669045_total_data_with_complete_fractional_anisotropy.csv'), index=False)
+print(f'The number of subjects with no missing values in fractional anisotropy: {len(final_brain_df)}')
