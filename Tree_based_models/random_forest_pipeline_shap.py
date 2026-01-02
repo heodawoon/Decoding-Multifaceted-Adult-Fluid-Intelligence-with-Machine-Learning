@@ -1,5 +1,5 @@
 """
-Random Forest classification with SHAP TreeExplainer interpretation on UKB fluid intelligence (top/bottom 10%).
+Random Forest classification with SHAP interpretation on UKB fluid intelligence (top/bottom 10%).
 
 This script:
 - Loads the UKB dataset and cross-validation splits (5 repeats × 5 folds).
@@ -27,13 +27,14 @@ import os, json, csv, argparse
 import pandas as pd
 import numpy as np
 from sklearn.metrics import accuracy_score, roc_auc_score
-from data_utils import select_data
+from data_utils import select_data_gf_cls, select_data_edu_cls
 import shap
 from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
+from sklearn.model_selection import StratifiedShuffleSplit
 
 
 # ------------------- Config (argparse) -------------------
@@ -42,7 +43,14 @@ def parse_args():
         description="Random Forest + SHAP on UKB fluid intelligence (top/bottom 10%)"
     )
     parser.add_argument(
-        "--variable_type",
+        "--cls_type",
+        type=str,
+        choices=["gf", "edu"],
+        default="gf",
+        help="Type of the classification task: gf (fluid intelligence) or edu (education)",
+    )
+    parser.add_argument(
+      "--variable_type",
         type=str,
         choices=["all", "brain", "health", "socio", "brain_health", "health_socio", "brain_socio"],
         default="all",
@@ -51,49 +59,116 @@ def parse_args():
     parser.add_argument(
         "--json_path",
         type=str,
-        default="/LocalData1/daheo/data/BRL/UKB_new/Iter_5_Folds_5.json",
+        default="/DataCommon3/daheo/UKB_FINAL/data/Iter_5_Folds_5.json",
         help="Path to cross-validation split JSON file.",
     )
     parser.add_argument(
         "--data_path",
         type=str,
-        default="/LocalData1/daheo/data/BRL/UKB_new/Step5_refilter_categorical_for_deeplearning.csv",
+        default="/DataCommon3/daheo/UKB_FINAL/data/Step5_refilter_categorical_for_deeplearning.csv",
         help="Path to input CSV data.",
     )
     parser.add_argument(
         "--outdir",
         type=str,
-        default="/LocalData1/daheo/BRL/UKB_new/Model1_Tree_based/Randomforest_shap",
+        default="/DataCommon3/daheo/UKB_FINAL/results/Tree_based/Randomforest_shap_plz",
         help="Directory to save all results and SHAP outputs.",
+    )
+
+    parser.add_argument(
+        "--n_estimators",
+        type=int,
+        default=800,
+        help="Number of trees. More trees reduce variance but increase time. Typical: 200–2000 (e.g., 500, 1000).",
+    )
+    parser.add_argument(
+        "--max_depth",
+        type=str,
+        default=40,
+        help="Maximum tree depth. None = fully grown (can overfit). Typical: 5–50 or None (e.g., 10, 20, 30).",
+    )
+    parser.add_argument(
+        "--max_features",
+        type=str,
+        default=0.3,
+        choices=["sqrt", "log2", "1.0", "0.5", "0.3"],
+        help=(
+            "Number of features to consider at each split. "
+            "Use 'sqrt'/'log2' or a fraction as string (e.g., '0.5'). Strong impact on generalization."
+        ),
+    )
+    parser.add_argument(
+        "--min_samples_leaf",
+        type=int,
+        default=5,
+        help="Minimum samples required at a leaf node. Strong regularizer. Typical: 1–20 (e.g., 1, 2, 5, 10).",
+    )
+    parser.add_argument(
+        "--min_samples_split",
+        type=int,
+        default=2,
+        help="Minimum samples required to split an internal node. Typical: 2–50 (e.g., 2, 5, 10, 20).",
+    )
+    parser.add_argument(
+        "--class_weight",
+        type=str,
+        default="balanced",
+        choices=["None", "balanced", "balanced_subsample"],
+        help="Class weighting for imbalanced data. Use 'balanced' or 'balanced_subsample' if classes are skewed.",
+    )
+    parser.add_argument(
+        "--max_samples",
+        type=str,
+        default=0.9,
+        help=(
+            "If bootstrap=True, number of samples to draw for each tree. "
+            "Float in (0,1] = fraction of training set. Typical: 0.5–1.0 (e.g., 0.7, 0.9)."
+        ),
     )
     return parser.parse_args()
 
 
 args = parse_args()
 
+max_depth    = None if args.max_depth == "None" else int(args.max_depth)
+class_weight = None if args.class_weight == "None" else args.class_weight
+max_samples  = None if args.max_samples == "None" else float(args.max_samples)
+
+if args.max_features in ["sqrt", "log2"]:
+    max_features = args.max_features
+else:
+    max_features = float(args.max_features)
 
 variable_type = args.variable_type
 json_path = args.json_path
 data_path = args.data_path
-outdir = os.path.join(args.outdir, variable_type)
+parameter_name = (f'ne{args.n_estimators}_md{args.max_depth}'
+                  f'_mf{args.max_features}_msl{args.min_samples_leaf}'
+                  f'_mss{args.min_samples_split}_cw{args.class_weight}'
+                  f'_ms{max_samples}')
+outdir = os.path.join(args.outdir, args.cls_type, variable_type, parameter_name)
 
 os.makedirs(outdir, exist_ok=True)
 
-save_result_csv = f"{outdir}/Randomforest_shap_{variable_type}_final_result_value.csv"
-csv_save_all_iter_fold = f"{outdir}/Randomforest_shap_{variable_type}_all_iters_folds.csv"
+save_result_csv                 = f"{outdir}/Randomforest_shap_{variable_type}_final_result_value_for_parameter_select.csv"
+csv_save_all_iter_fold          = f"{outdir}/Randomforest_shap_{variable_type}_all_iters_folds.csv"
+csv_save_total_averaged_results = f"{args.outdir}/Randomforest_shap_averaged_total_results.csv"
 
 # ------------------- Read data and basic settings -------------------
 df = pd.read_csv(data_path)
 df = df.fillna(0.0)
 
 # Select feature columns for the given variable_type
-category_col, continue_col, Categories = select_data(variable_type)
+eid_col = 'eid'
+if args.cls_type == 'gf':
+    label_col = "fluid_2_p10"
+    category_col, continue_col, Categories = select_data_gf_cls(variable_type)
+elif args.cls_type == 'edu':
+    label_col = "ed_b_2"
+    category_col, continue_col, Categories = select_data_edu_cls(variable_type)
 
 with open(json_path, "r") as f:
     ids = json.load(f)
-
-eid_col = 'eid'
-label_col = "fluid_2_p10"
 
 
 def get_datalist(category_col, continue_col, data, eids, mean_cont, std_cont):
@@ -161,8 +236,20 @@ for it in range(5):
 
     for fold in range(5):
         itfold = ids["iterations"][it]["folds"][fold]
-        train_eids = itfold["train_eid"]
+        train_val_eids = itfold["train_eid"]
         test_eids = itfold["valid_eid"]
+
+        # ---- train_val dataframe ----
+        train_valid_df = df.loc[df[eid_col].isin(train_val_eids)].copy().sort_values(eid_col)
+        train_valid_eid = train_valid_df[eid_col].to_numpy()
+        train_valid_labels = train_valid_df[label_col].to_numpy()
+
+        # ---- Split validation (Stratified 10%) ----
+        sss = StratifiedShuffleSplit(n_splits=1, test_size=0.1, random_state=42)
+        train_idx, valid_idx = next(sss.split(train_valid_eid, train_valid_labels))
+
+        train_eids = train_valid_eid[train_idx].tolist()
+        valid_eids = train_valid_eid[valid_idx].tolist()
 
         # Extract training subset to compute normalization statistics
         train_df_full = (
@@ -195,7 +282,14 @@ for it in range(5):
             )
 
         # Random Forest classifier (classification task)
-        model = RandomForestClassifier(random_state=42)
+        model = RandomForestClassifier(random_state=42,
+                                       n_estimators=args.n_estimators,
+                                       max_depth=max_depth,
+                                       max_features=max_features,
+                                       min_samples_leaf=args.min_samples_leaf,
+                                       min_samples_split=args.min_samples_split,
+                                       class_weight=class_weight,
+                                       max_samples=max_samples,)
 
         # Pipeline = preprocessing + model
         pipeline = Pipeline(
@@ -206,6 +300,9 @@ for it in range(5):
         train_X, train_y, _ = get_datalist(
             category_col, continue_col, df, train_eids, mean_cont, std_cont
         )
+        valid_X, valid_y, _ = get_datalist(
+            category_col, continue_col, df, valid_eids, mean_cont, std_cont
+        )
         test_X, test_y, test_eids_sorted = get_datalist(
             category_col, continue_col, df, test_eids, mean_cont, std_cont
         )
@@ -214,13 +311,20 @@ for it in range(5):
         pipeline.fit(train_X, train_y)
 
         # Predict on test set via pipeline
+        y_pred_proba_val = pipeline.predict_proba(valid_X)[:, 1]
+        y_pred_val = pipeline.predict(valid_X)
         y_pred_proba = pipeline.predict_proba(test_X)[:, 1]
         y_pred = pipeline.predict(test_X)
 
         # ---- Evaluation metrics ----
+        acc_val = accuracy_score(valid_y, y_pred_val)
+        auc_val = roc_auc_score(valid_y, y_pred_proba_val)
         acc = accuracy_score(test_y, y_pred)
         auc = roc_auc_score(test_y, y_pred_proba)
 
+        tn_val, fp_val, fn_val, tp_val = confusion_matrix(valid_y, y_pred_val, labels=[0, 1]).ravel()
+        sensitivity_val = tp_val / (tp_val + fn_val) if (tp_val + fn_val) > 0 else 0.0  # recall / TPR
+        specificity_val = tn_val / (tn_val + fp_val) if (tn_val + fp_val) > 0 else 0.0  # TNR
         tn, fp, fn, tp = confusion_matrix(test_y, y_pred, labels=[0, 1]).ravel()
         sensitivity = tp / (tp + fn) if (tp + fn) > 0 else 0.0  # recall / TPR
         specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0  # TNR
@@ -233,6 +337,10 @@ for it in range(5):
         result_row = {
             "iter": it,
             "fold": fold,
+            "acc_val": acc_val,
+            "auc_val": auc_val,
+            "sen_val": sensitivity_val,
+            "spe_val": specificity_val,
             "acc": acc,
             "auc": auc,
             "sen": sensitivity,
@@ -267,14 +375,13 @@ for it in range(5):
         else:
             X_test_dense = X_test_trans
 
-        # 3) Compute SHAP values using TreeExplainer on the trained Random Forest
-        explainer = shap.TreeExplainer(rf_model)
-        shap_values = explainer.shap_values(X_test_dense)
-
-        # Binary classification: shap_values can be [class0, class1]
-        if isinstance(shap_values, list):
-            # Use SHAP values for the positive class (label 1)
-            shap_values = shap_values[1]
+        # 3) Compute SHAP values using tree-based SHAP via shap.Explainer
+        # for each test subject and feature on the trained Random Forest
+        explainer = shap.Explainer(rf_model)
+        sv = explainer(X_test_dense)
+        shap_values = sv.values
+        if shap_values.ndim == 3:
+            shap_values = shap_values[:, :, 1]
 
         shap_values = np.squeeze(shap_values)
 
@@ -323,9 +430,31 @@ print(
     f"sen={np.mean(all_iter_sen):.4f}, spc={np.mean(all_iter_spc):.4f}"
 )
 print(
-    f"STD acc={np.std(all_iter_acc):.4f}, auc={np.std(all_iter_auc):.4f}, "
-    f"sen={np.std(all_iter_sen):.4f}, spc={np.std(all_iter_spc):.4f}"
+    f"STD acc={np.std(all_iter_acc, ddof=1):.4f}, auc={np.std(all_iter_auc, ddof=1):.4f}, "
+    f"sen={np.std(all_iter_sen, ddof=1):.4f}, spc={np.std(all_iter_spc, ddof=1):.4f}"
 )
 
 df_all = pd.DataFrame(all_rows)
 df_all.to_csv(csv_save_all_iter_fold, index=False)
+
+tot_avg_cols = ['variable', 'clstype', 'mean auc', 'mean acc', 'mean sen', 'mean spc', 'std auc', 'std acc', 'std sen', 'std spc',
+                'n_estimators', 'max_depth', 'max_features', 'min_samples_leaf',
+                'min_samples_split', 'class_weight', 'max_samples']
+tot_avg_vals = [variable_type, args.cls_type,
+                np.mean(all_iter_auc), np.mean(all_iter_acc), np.mean(all_iter_sen), np.mean(all_iter_spc),
+                np.std(all_iter_auc, ddof=1), np.std(all_iter_acc, ddof=1), np.std(all_iter_sen, ddof=1), np.std(all_iter_spc, ddof=1),
+                args.n_estimators, args.max_depth, args.max_features, args.min_samples_leaf,
+                args.min_samples_split, args.class_weight, args.max_samples]
+
+# Build a single-row DataFrame
+df_row = pd.DataFrame([tot_avg_vals], columns=tot_avg_cols)
+
+# Check if file exists
+file_exists = os.path.isfile(csv_save_total_averaged_results)
+
+# Save logic
+df_row.to_csv(
+    csv_save_total_averaged_results,
+    mode='a' if file_exists else 'w',   # append or write
+    header=not file_exists,              # write header only if new file
+    index=False)
