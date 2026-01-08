@@ -330,7 +330,9 @@ for it in range(5):
         specificity = tn / (tn + fp) if (tn + fp) > 0 else 0.0  # TNR
 
         print(
-            f"[iter {it} fold {fold}] acc={acc:.4f}, auc={auc:.4f}, "
+            f"[iter {it} fold {fold}] Validation acc={acc_val:.4f}, auc={auc_val:.4f}, "
+            f"sen={sensitivity_val:.4f}, spc={specificity_val:.4f}\n"
+            f"Test acc={acc:.4f}, auc={auc:.4f}, "
             f"sen={sensitivity:.4f}, spc={specificity:.4f}"
         )
 
@@ -438,14 +440,10 @@ val_all_iter_auc = np.array(val_all_iter_auc)
 val_all_iter_sen = np.array(val_all_iter_sen)
 val_all_iter_spc = np.array(val_all_iter_spc)
 
-print(
-    f"Average acc={np.mean(all_iter_acc):.4f}, auc={np.mean(all_iter_auc):.4f}, "
-    f"sen={np.mean(all_iter_sen):.4f}, spc={np.mean(all_iter_spc):.4f}"
-)
-print(
-    f"STD acc={np.std(all_iter_acc, ddof=1):.4f}, auc={np.std(all_iter_auc, ddof=1):.4f}, "
-    f"sen={np.std(all_iter_sen, ddof=1):.4f}, spc={np.std(all_iter_spc, ddof=1):.4f}"
-)
+print(f"Average acc={np.mean(all_iter_acc):.4f}, auc={np.mean(all_iter_auc):.4f},"
+      f"sen={np.mean(all_iter_sen):.4f}, spc={np.mean(all_iter_spc):.4f}")
+print(f"STD acc={np.std(all_iter_acc):.4f}, auc={np.std(all_iter_auc):.4f},"
+      f"sen={np.std(all_iter_sen):.4f}, spc={np.std(all_iter_spc):.4f}")
 
 df_all = pd.DataFrame(all_rows)
 df_all.to_csv(csv_save_all_iter_fold, index=False)
