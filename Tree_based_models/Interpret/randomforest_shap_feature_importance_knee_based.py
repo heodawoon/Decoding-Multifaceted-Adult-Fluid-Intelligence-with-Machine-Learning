@@ -189,7 +189,7 @@ for it in range(N_ITER):
 
         true_mat[idx_map, col] = true_lab.short()
         correct_mat[idx_map, col] = (true_lab == pred_lab).short()
-        present_mat[idx_map, col] = 1  # ★ 추가
+        present_mat[idx_map, col] = 1
         col += 1
 
         del fold_df
