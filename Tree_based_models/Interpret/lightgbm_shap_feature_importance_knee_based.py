@@ -95,7 +95,11 @@ args = parse_args()
 variable_type = args.variable_type
 cls_type = args.cls_type
 root_path = f'{args.root_path}/{cls_type}/{variable_type}'
+
+# The subfolder records the hyperparameters used in prior training.
+# Modify this value to match your own training setup.
 subfolder = 'md3_nl63_lr0.01_ni800_mdl20_l10.0_l25.0'
+
 data_path = f'{root_path}/{subfolder}/Lightgbm_shap_{variable_type}_all_iters_folds.csv'
 save_root = f'{args.outdir}/{cls_type}/{variable_type}'
 os.makedirs(save_root, exist_ok=True)
