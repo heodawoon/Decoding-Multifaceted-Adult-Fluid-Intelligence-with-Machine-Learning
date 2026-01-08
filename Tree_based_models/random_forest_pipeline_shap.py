@@ -310,7 +310,7 @@ for it in range(5):
         # Fit Random Forest
         pipeline.fit(train_X, train_y)
 
-        # Predict on test set
+        # Predict on validation and test set
         y_pred_proba_val = pipeline.predict_proba(valid_X)[:, 1]
         y_pred_val = pipeline.predict(valid_X)
         y_pred_proba = pipeline.predict_proba(test_X)[:, 1]
@@ -407,7 +407,7 @@ for it in range(5):
                 "sens_fold": float(sensitivity),
                 "spec_fold": float(specificity),
             }
-            # Add SHAP value for each preprocessed feature
+            # Add SHAP value for each feature
             for j, fname in enumerate(feature_names):
                 row[f"shap::{fname}"] = float(shap_values[i, j])
             rows.append(row)
