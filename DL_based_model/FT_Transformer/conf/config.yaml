@@ -4,7 +4,7 @@ defaults:
   - optimizer: adamw
   - training: default
 
-save_path: /LocalData2/daheo/UKB_final/results/DL_based/${model.name}_251116_ep_${training.train_epochs}_bs_${training.batch_size}/${dataset.variable_type}
+save_path: ./results/DL_based/${model.name}_ep_${training.train_epochs}_bs_${training.batch_size}/${dataset.variable_type}
 
 gpu: 1
 test: true
