@@ -46,31 +46,27 @@ def parse_args():
         default="FTTransformer_251116_ep_100_bs_256",
         help="Model experiment folder name (under root_path).",
     )
-    parser.add_argument(
-        "--model_sub_folder",
-        type=str,
-        default="01-08-13-32_Interpret_FTTF_E100B2LR0.0003LD1e-05",
-        help="Model experiment sub folder name (under model_folder).",
-    )
     return parser.parse_args()
 args = parse_args()
 
 variable_type = args.variable_type
 root_dir_name = args.root_path
 subfolder_name1 = args.model_folder
-subfolder_name2 = args.model_sub_folder
+root_path = f'{root_dir_name}/{subfolder_name1}/{variable_type}/Interpret'
+subfolder_name2 = glob.glob(f"{root_path}/*")[0].split('/')[-1]
+final_root_path = f'{root_path}/{subfolder_name2}'
 
-N_ITER, N_FOLD = 5, 5
-root_path = f'{root_dir_name}/{subfolder_name1}/{variable_type}/Interpret/{subfolder_name2}'
 save_root = f'{root_dir_name}/{subfolder_name1}/Interpret_result/{variable_type}'
 category_col, continue_col, Categories = select_data(variable_type)
 os.makedirs(save_root, exist_ok=True)
+
+N_ITER, N_FOLD = 5, 5
 
 # Collect all subject IDs (eids) across iterations and folds
 all_eids = []
 for it in range(1, N_ITER + 1):
     for fd in range(1, N_FOLD + 1):
-        data = torch.load(os.path.join(root_path, f'Iteration_{it}/Fold_{fd}/attributions.pt'), weights_only=False)
+        data = torch.load(os.path.join(final_root_path, f'Iteration_{it}/Fold_{fd}/attributions.pt'), weights_only=False)
         eids = torch.cat(data["eid"], dim=0).cpu()
         all_eids.append(eids)
 uniq_eid = torch.sort(torch.unique(torch.cat(all_eids, dim=0)))[0]  # [N_id]
@@ -84,7 +80,7 @@ present_mat = torch.zeros(N_ID, N_ITER*N_FOLD, dtype=torch.int16)
 col = 0
 for it in range(1, N_ITER + 1):
     for fd in range(1, N_FOLD + 1):
-        data = torch.load(os.path.join(root_path, f'Iteration_{it}/Fold_{fd}/attributions.pt'), weights_only=False)
+        data = torch.load(os.path.join(final_root_path, f'Iteration_{it}/Fold_{fd}/attributions.pt'), weights_only=False)
         eids = torch.cat(data["eid"], dim=0).cpu()
         yt   = torch.cat(data["true"], dim=0)
         yp   = torch.cat(data["pred"], dim=0)
@@ -159,7 +155,11 @@ groups = {
     "wrong_bottom": g_wrong_bottom,
 }
 
-F = len(continue_col) + len(category_col)
+if variable_type != 'brain':
+    F = len(continue_col) + len(category_col)
+else:
+    F = len(continue_col)
+    category_col = []
 
 eid_sum_mag  = torch.zeros(N_ID, F, dtype=torch.float32)
 eid_sum_sign = torch.zeros(N_ID, F, dtype=torch.float32)
@@ -167,22 +167,25 @@ eid_cnt      = torch.zeros(N_ID, dtype=torch.long)
 
 for it in range(1, N_ITER + 1):
     for fd in range(1, N_FOLD + 1):
-        data = torch.load(os.path.join(root_path, f'Iteration_{it}/Fold_{fd}/attributions.pt'), weights_only=False)
+        data = torch.load(os.path.join(final_root_path, f'Iteration_{it}/Fold_{fd}/attributions.pt'), weights_only=False)
         eids = torch.cat(data["eid"], dim=0).cpu()
         idx_map = torch.searchsorted(uniq_eid, eids)  # [B]
 
         # Load per-sample attributions
         attr_num = torch.cat(data["attr_cont"], dim=0)         # [B, D_num]
-        attr_cat  = torch.cat(data["attr_cat"], dim=0)         # [B, K_cat, D_emb]
         print('attr_num: ', attr_num.shape)
-        print('attr_cat: ', attr_cat.shape)
+        if variable_type != 'brain':
+            attr_cat  = torch.cat(data["attr_cat"], dim=0)         # [B, K_cat, D_emb]
+            print('attr_cat: ', attr_cat.shape)
 
         attr_num_sum = attr_num.sum(dim=-1)
-        attr_cat_sum = attr_cat.sum(dim=-1)
         print('attr_num_sum: ', attr_num_sum.shape)
-        print('attr_cat_sum: ', attr_cat_sum.shape)
-
-        attr_tot_cat = torch.cat((attr_num_sum, attr_cat_sum), dim=-1)
+        if variable_type != 'brain':
+            attr_cat_sum = attr_cat.sum(dim=-1)
+            print('attr_cat_sum: ', attr_cat_sum.shape)
+            attr_tot_cat = torch.cat((attr_num_sum, attr_cat_sum), dim=-1)
+        else:
+            attr_tot_cat = attr_num_sum
 
         attr_all_mag  = attr_tot_cat.abs()                                # [B, F]
         attr_all_sign = attr_tot_cat                                      # [B, F]
