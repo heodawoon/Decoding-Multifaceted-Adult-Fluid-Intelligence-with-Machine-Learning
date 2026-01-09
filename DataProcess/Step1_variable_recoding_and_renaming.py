@@ -27,8 +27,8 @@ import os, re
 import pandas as pd
 import numpy as np
 
-total_csv_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB_Final/Final_Version_for_Git/Step0/Step0_2_ukb669045_total_data_with_complete_fractional_anisotropy.csv'
-save_root = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB_Final/Final_Version_for_Git/Step1'
+total_csv_path = './data/Step0/Step0_2_ukb669045_total_data_with_complete_fractional_anisotropy.csv'
+save_root = './data/Step1'
 os.makedirs(save_root, exist_ok=True)
 save_reverse_code = os.path.join(save_root, 'Step1_1_ukb669045_reverse_coding_recoding_renaming.csv')
 save_reverse_code_count = os.path.join(save_root, "Step1_2_ukb669045_variable_recoding_and_renaming_value_counts.xlsx")
