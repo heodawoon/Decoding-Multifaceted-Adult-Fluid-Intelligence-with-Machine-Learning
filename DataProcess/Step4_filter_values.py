@@ -35,7 +35,7 @@ import pandas as pd
 import numpy as np
 
 # ---------- Config ----------
-root_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB_Final/Final_Version_for_Git'
+root_path = './data'
 
 csv_path = os.path.join(root_path, 'Step3', 'Step3_ukb669045_remove_brain_related_disease_subjects.csv')
 save_root = os.path.join(root_path, 'Step4')
