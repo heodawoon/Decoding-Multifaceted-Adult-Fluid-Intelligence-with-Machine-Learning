@@ -13,11 +13,11 @@ import os
 import pandas as pd
 import numpy as np
 
-other_csv_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/ukb669045_250926_sohyun_1.csv'
-brain_csv_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/ukb669045_250926_sohyun_2.csv'
-disease_csv_path = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/ukb669045_251002_sohyun.csv'
-disease_csv_path2 = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB/ukb669045_251004_sohyun.csv'
-save_root = '/media/dwh/b9bd8b27-0895-494e-8a2a-2d019ae4bf2c/UKB_Final/Final_Version_for_Git/Step0'
+other_csv_path = './data/UKB/Other_lists.csv'
+brain_csv_path = './data/UKB/Brain_only.csv'
+disease_csv_path = './data/UKB/Disease_only1.csv'
+disease_csv_path2 = './data/UKB/Disease_only2.csv'
+save_root = './data/Step0'
 os.makedirs(save_root, exist_ok=True)
 
 # Read csv files
