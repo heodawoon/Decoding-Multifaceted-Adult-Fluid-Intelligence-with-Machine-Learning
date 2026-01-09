@@ -1,0 +1,17 @@
+defaults:
+  - dataset: UKB
+  - model: ft_transformer
+  - optimizer: adamw
+  - training: default
+
+pretrained_model: /LocalData2/daheo/UKB_FINAL/results/DL_based/FTTransformer_251116_ep_100_bs_256
+save_path: /LocalData2/daheo/UKB_FINAL/results/DL_based/FTTransformer_251116_ep_100_bs_256/${dataset.variable_type}/Interpret
+
+gpu: 3
+test: true
+
+n_fold: 5
+n_iterations: 5
+
+wandb: true
+project: UKB_interpret

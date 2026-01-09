@@ -1,0 +1,4 @@
+name: ukb
+json_path: /LocalData2/daheo/UKB_FINAL/data/Iter_5_Folds_5.json
+data_path: /LocalData2/daheo/UKB_FINAL/data/Step5_refilter_categorical_for_deeplearning.csv
+variable_type: all  # all brain health socio brain_health brain_socio health_socio

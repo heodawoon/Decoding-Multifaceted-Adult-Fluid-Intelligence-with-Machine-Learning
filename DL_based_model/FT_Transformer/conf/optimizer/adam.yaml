@@ -1,0 +1,28 @@
+name: adam
+lr: 1.0e-4
+weight_decay: 0.01
+
+# Parameter-specific learning rate multipliers
+embedding_lr_mult: 0.1      # Embeddings typically need lower LR
+attention_lr_mult: 1.0       # Attention layers use base LR
+ffn_lr_mult: 1.0            # FFN layers use base LR
+
+# Parameter-specific weight decay multipliers
+embedding_wd_mult: 0.1      # Embeddings typically need lower weight decay
+
+# Optimizer hyperparameters
+betas: [0.9, 0.999]
+eps: 1e-8
+
+lr_scheduler:
+  mode: cos # ['cos', 'linear']
+  base_lr: ${optimizer.lr}
+  target_lr: 1e-6
+
+  decay_factor: 0.1 # for step mode
+  milestones: [0.3, 0.6, 0.9]
+  poly_power: 2.0 # for poly mode
+  lr_decay: 0.98
+
+  warm_up_from: 0.0
+  warm_up_steps: 0

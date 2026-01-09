@@ -1,0 +1,36 @@
+name: adamw
+lr: 3.0e-4
+weight_decay: 1.0e-5
+
+# Parameter-specific learning rate multipliers
+embedding_lr_mult: 0.1      # Embeddings need much lower LR
+attention_lr_mult: 1.0       # Attention layers use base LR
+ffn_lr_mult: 1.0            # FFN layers use base LR
+
+# Parameter-specific weight decay multipliers
+embedding_wd_mult: 0.0      # No weight decay for embeddings
+attention_wd_mult: 1.0      # Full weight decay for attention
+ffn_wd_mult: 1.0           # Full weight decay for FFN
+
+# Optimizer hyperparameters
+betas: [0.9, 0.95]
+eps: 1e-8
+
+# Cosine annealing with warmup
+lr_scheduler:
+  mode: cos                 # Cosine annealing
+  base_lr: ${optimizer.lr}   # Start from base LR
+  target_lr: 1e-6
+  
+  # Warmup configuration
+  warmup_percentage: 0.05   # Percentage of total steps
+  min_warmup_steps: 100     # Minimum warmup steps
+  max_warmup_steps: 10000   # Maximum warmup steps
+  warm_up_from: 0.0         # Start warmup from 0
+  warm_up_steps: 1000       # 1000 steps of warmup
+
+  # Other modes (not used with cosine)
+  decay_factor: 0.1
+  milestones: [0.3, 0.6, 0.9]
+  poly_power: 2.0
+  lr_decay: 0.98

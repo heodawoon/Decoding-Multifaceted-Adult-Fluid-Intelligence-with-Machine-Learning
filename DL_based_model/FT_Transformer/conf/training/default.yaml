@@ -1,0 +1,10 @@
+name: default
+
+num_workers: 4
+train_epochs: 100
+batch_size: 256
+patience: 5
+
+mixup_data: true
+eval_batch_size: 512
+

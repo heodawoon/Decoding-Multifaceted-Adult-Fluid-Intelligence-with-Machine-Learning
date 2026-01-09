@@ -1,0 +1,16 @@
+defaults:
+  - dataset: UKB
+  - model: ft_transformer
+  - optimizer: adamw
+  - training: default
+
+save_path: /LocalData2/daheo/UKB_final/results/DL_based/${model.name}_251116_ep_${training.train_epochs}_bs_${training.batch_size}/${dataset.variable_type}
+
+gpu: 1
+test: true
+
+n_fold: 5
+n_iterations: 5
+
+wandb: true
+project: UKB
