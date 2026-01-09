@@ -1,7 +1,27 @@
-import os, json
+"""
+Generate repeated stratified cross-validation splits with coverage-aware sampling.
+
+This script constructs N_ITER repeated iterations of N_FOLDS stratified
+cross-validation splits for binary classification. In each iteration, a fixed
+number of subjects per class (N_PER_CLASS) are sampled while prioritizing
+subjects that have not appeared in previous iterations, ensuring full subject
+coverage whenever feasible.
+
+For each iteration:
+- Subjects are sampled per class with coverage-aware logic.
+- Stratified K-fold splitting is applied to generate train/test splits.
+- Subject IDs (eids) for each fold are saved to JSON files.
+
+The script also performs sanity checks by counting how many times each subject
+appears in the test sets across all iterations and folds, and saves these
+statistics for verification.
+"""
+
+import os
+import json
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import StratifiedKFold, StratifiedShuffleSplit
+from sklearn.model_selection import StratifiedKFold
 
 # ---------- Config ----------
 root_path = './data'
@@ -87,23 +107,14 @@ for it in range(N_ITER):
     skf = StratifiedKFold(n_splits=N_FOLDS, shuffle=True, random_state=SEED + it)
     folds = []
     for fold_id, (tr_val_idx, te_idx) in enumerate(skf.split(sub, y), start=1):
-        train_valid_df = sub.iloc[tr_val_idx][['eid', 'fluid_2_p10']].copy()
-        train_valid_eid = train_valid_df['eid'].to_numpy()
-        train_valid_labels = train_valid_df['fluid_2_p10'].to_numpy()
-
-        # ---- Split validation (Stratified 10%) ----
-        sss = StratifiedShuffleSplit(n_splits=1, test_size=0.1, random_state=42)
-        train_idx, valid_idx = next(sss.split(train_valid_eid, train_valid_labels))
-
-        tr_eids = train_valid_eid[train_idx].tolist()
-        val_eids = train_valid_eid[valid_idx].tolist()
-
+        train_df = sub.iloc[tr_val_idx][['eid', 'fluid_2_p10']].copy()
+        tr_eids = train_df['eid'].to_numpy()
         te_eids = sub.iloc[te_idx]['eid'].tolist()
+
         folds.append({
             "fold": fold_id,
-            "train_eid": tr_eids,
-            "valid_eid": val_eids,
-            "test_eid": te_eids  # <- 여기서 valid를 test처럼 쓰는 거 그대로 유지
+            "train_eid": tr_eids.tolist(),
+            "test_eid": te_eids
         })
 
     iterations.append({
@@ -113,11 +124,11 @@ for it in range(N_ITER):
         "folds": folds
     })
 
-# 최종적으로 coverage가 잘 됐는지 한번 더 확인 (optional)
+# Final check: ensure full coverage across iterations
 assert len(covered0) == len(ids0_all), f"class0: {len(covered0)} covered vs {len(ids0_all)} total"
 assert len(covered1) == len(ids1_all), f"class1: {len(covered1)} covered vs {len(ids1_all)} total"
 
-# ---------- Save JSON (기존과 동일) ----------
+# ---------- Save JSON ----------
 with open(json_all_path, "w") as f:
     json.dump(
         {
@@ -140,11 +151,11 @@ for item in iterations:
         json.dump(item, f, indent=2)
     print(f"Saved: {ipath}")
 
-# ---------- Sanity check + subject occurrence counting (validation-based) ----------
+# ---------- Sanity check + subject occurrence counting (test-based) ----------
 with open(json_all_path, 'r') as f:
     ids = json.load(f)
 
-valid_total = []
+test_total = []
 subject_counter = {}
 
 for iteridx in range(N_ITER):
@@ -152,29 +163,29 @@ for iteridx in range(N_ITER):
     print(f"\n===== Iteration {iteridx + 1} =====")
     for foldidx in range(N_FOLDS):
         iteration_fold = ids['iterations'][iteridx]['folds'][foldidx]
-        valid_eid = iteration_fold['valid_eid']
+        test_eid = iteration_fold['test_eid']
 
-        iter_wise.extend(valid_eid)
-        valid_total.extend(valid_eid)
+        iter_wise.extend(test_eid)
+        test_total.extend(test_eid)
 
-        for eid in valid_eid:
+        for eid in test_eid:
             subject_counter[eid] = subject_counter.get(eid, 0) + 1
 
-        uniq_numb = len(np.unique(valid_eid))
+        uniq_numb = len(np.unique(test_eid))
         print(
             f"Iter {iteridx + 1} / Fold {foldidx + 1} / "
-            f"Subjects: {len(valid_eid)} / Unique in fold: {uniq_numb}"
+            f"Subjects: {len(test_eid)} / Unique in fold: {uniq_numb}"
         )
 
     uniq_iter = len(np.unique(iter_wise))
-    print(f"→ Iter {iteridx + 1} total unique validation subjects: {uniq_iter}")
+    print(f"→ Iter {iteridx + 1} total unique test subjects: {uniq_iter}")
 
-valid_total_unique = len(np.unique(valid_total))
-print(f"\n=== Unique validation subjects across all {N_ITER} iterations: {valid_total_unique}")
+test_total_unique = len(np.unique(test_total))
+print(f"\n=== Unique test subjects across all {N_ITER} iterations: {test_total_unique}")
 
-count_df = pd.DataFrame(list(subject_counter.items()), columns=["eid", "valid_count"])
+count_df = pd.DataFrame(list(subject_counter.items()), columns=["eid", "test_count"])
 count_df.to_csv(count_csv_path, index=False)
 
-print(f"\nSaved validation-based subject occurrence counts to: {count_csv_path}")
+print(f"\nSaved test-based subject occurrence counts to: {count_csv_path}")
 print(f"Total subjects tracked: {len(count_df)}")
 print(count_df.describe())
