@@ -3,6 +3,8 @@ library(pROC) #for ROC
 library(car) #for multicollinearity
 library(grf) #for ATE (causal forest)
 
+df <- read.csv('Step4_4_binarize_disease_column.csv')
+
 ####################logit######################
 
 #logistic regression on fluid intelligence to validate feature importance results from XGBoost
