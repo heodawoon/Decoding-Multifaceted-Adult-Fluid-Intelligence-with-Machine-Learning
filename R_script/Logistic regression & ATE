@@ -1,0 +1,246 @@
+library(tidyverse)
+library(pROC) #for ROC
+library(car) #for multicollinearity
+library(grf) #for ATE (causal forest)
+
+####################logit######################
+
+#logistic regression on fluid intelligence to validate feature importance results from XGBoost
+
+#fit a logistic regression model
+#continuous variables were standardized
+df_logit <- glm(fluid_2_p10 ~ 
+                  scale(ed_yr_2) + scale(met_2) + scale(age_2) +
+                  scale(alcohol_2) + ethnicity_b_2 +
+                  scale(income_dfm_2) + scale(X25092.2.0) + gender +
+                  scale(X25059.2.0) + scale(X25068.2.0) +
+                  scale(X25094.2.0) + emp_b_2 +
+                  scale(X25095.2.0) + scale(frnd_sat_2) + 
+                  scale(X25070.2.0) + scale(X25098.2.0) +
+                  scale(X25069.2.0) + scale(bmi_2),
+                family = binomial,
+                data = df)
+
+#see results
+summary(df_logit)
+
+#calculating the odds ratio and 95% confidence interval, and rounding them to three decimal places
+df_logit_res <- round(
+  cbind(
+    OR  = exp(coef(df_logit)),
+    LCI = exp(confint(df_logit)[, 1]),
+    UCI = exp(confint(df_logit)[, 2]),
+    p_value = summary(df_logit)$coefficients[, "Pr(>|z|)"]
+  ), 3)
+
+
+#check multicollinearity
+vif(df_logit)
+
+#calculate AUC
+pred_prob <- predict(df_logit, type = "response")
+y_true <- df$fluid_2_p10
+roc_obj <- roc(y_true, pred_prob)
+auc(roc_obj)
+
+
+
+#logistic regression on fluid intelligence to examine the association with social network features
+
+#select social network features and significant features in classifying fluid intelligence as covariates
+df_sn <- df %>% 
+  dplyr::select(frnd_sat_2, social_act_n_2,
+                freq_visit_2, confide_2, ed_yr_2, met_2, age_2, alcohol_2,
+                ethnicity_0, income_fam_2, 
+                X25092.2.0, gender,
+                X25059.2.0, X25068.2.0, X25094.2.0,
+                emp_b_2, X25095.2.0, 
+                X25070.2.0, X25098.2.0, X25069.2.0,
+                bmi_2,
+                fluid_2_p10)
+
+#continuous variables were standardized
+df_sn <- df_sn  %>%  
+  mutate(across(
+    where(is.numeric) & !where(~ all(.x %in% c(0,1))),
+    scale
+  ))
+
+#fit a logistic regression model
+df_glm  <- glm(fluid_2_p10 ~ .,
+               family = binomial,
+               data = df_sn)
+
+#see results
+summary(df_glm)
+
+# Calculating the odds ratio and 95% confidence interval, and rounding them to three decimal places
+df_glm_res <- round(
+  cbind(
+    OR  = exp(coef(df_glm)),
+    LCI = exp(confint(df_glm )[, 1]),
+    UCI = exp(confint(df_glm )[, 2]),
+    p_value = summary(df_glm)$coefficients[, "Pr(>|z|)"]
+  ), 3)
+
+#check multicollinearity
+vif(df_glm)
+
+#calculate AUC
+pred_df_glm  <- predict(df_glm, type = "response")
+y_true <- df$fluid_2_p10
+roc_obj_ed <- roc(y_true, pred_df_glm)
+auc(roc_obj_ed)
+
+
+#################ATE of education###################
+
+#extracting significant features from the all-feature XGBoost set model
+#mutate binary education variable
+ate_df <- df %>% 
+  dplyr::select(income_dfm_2, bmi_2, frnd_sat_2, met_2,
+                social_act_n_2, X25059.2.0, alcohol_2,
+                social_act_2_pub, X25068.2.0, social_act_2_other,
+                social_act_2_education, smoke_status_2, 
+                social_act_2_religious, freq_visit_2,
+                X25069.2.0, confide_2, X25077.2.0,
+                age_2, X25103.2.0, X25095.2.0, X25066.2.0,
+                X25093.2.0, X25067.2.0, X25061.2.0, emp_2, 
+                X25102.2.0,
+                ed_yr_2
+  ) %>% 
+  mutate(ed_b_2 = ifelse(ed_yr_2 >= 20, 1, 0)) 
+
+
+#set up a function to compute z-statistics, p-values, and 95% confidence intervals
+ate_sig <- function(ate_obj, alpha = 0.05) {
+  est <- ate_obj["estimate"]
+  se  <- ate_obj["std.err"]
+  z <- est / se
+  p <- 2 * (1 - pnorm(abs(z)))
+  ci_lower <- est - qnorm(1 - alpha/2) * se
+  ci_upper <- est + qnorm(1 - alpha/2) * se
+  out <- data.frame(
+    estimate = est,
+    std.err  = se,
+    z        = z,
+    p.value  = p,
+    ci.lower = ci_lower,
+    ci.upper = ci_upper
+  )
+  
+  return(out)
+}
+
+###########################################################
+#######################friendship##########################
+###########################################################
+
+#covariates: standardize continuous variables
+X_frnd_b <- ate_df %>% 
+  select(-'frnd_sat_2', -'ed_b_2', -'ed_yr_2') %>%  
+  mutate(across(
+    where(is.numeric) & !where(~ all(.x %in% c(0,1))),
+    scale
+  ))
+
+#outcome
+Y_frnd_b <- ate_df$frnd_sat_2
+
+#treatment: binarized education
+W_frnd_b <- ate_df$ed_b_2
+
+#fit a causal forest
+CF_frnd_b <- causal_forest(X_frnd_b, 
+                           Y_frnd_b,
+                           W_frnd_b,
+                           min.node.size = 100,
+                           num.trees = 5000)
+
+#estimate the ATE
+ate_sig(average_treatment_effect(CF_frnd_b)) 
+
+###########################################################
+####################N of social act########################
+###########################################################
+
+#covariates: standardize continuous variables
+X_Nact_b <- ate_df %>% 
+  select(-'social_act_n_2', -'ed_b_2', -'ed_yr_2') %>%  
+  mutate(across(
+    where(is.numeric) & !where(~ all(.x %in% c(0,1))),
+    scale
+  ))
+
+#outcome
+Y_Nact_b <- ate_df$social_act_n_2
+
+#treatment: binarized education
+W_Nact_b <- ate_df$ed_b_2
+
+#fit a causal forest
+CF_Nact_b <- causal_forest(X_Nact_b, 
+                           Y_Nact_b,
+                           W_Nact_b,
+                           min.node.size = 100,
+                           num.trees = 5000)
+
+#estimate the ATE
+ate_sig(average_treatment_effect(CF_Nact_b)) 
+
+###########################################################
+##########################visit############################
+###########################################################
+
+#covariates: standardize continuous variables
+X_vst_b <- ate_df %>% 
+  select(-'freq_visit_2', -'ed_b_2', -'ed_yr_2') %>% 
+  mutate(across(
+    where(is.numeric) & !where(~ all(.x %in% c(0,1))),
+    scale
+  ))
+
+#outcome
+Y_vst_b <- ate_df$freq_visit_2
+
+#treatment: binarized education
+W_vst_b <- ate_df$ed_b_2
+
+#fit a causal forest
+CF_vst_b <- causal_forest(X_vst_b, 
+                          Y_vst_b,
+                          W_vst_b,
+                          min.node.size = 100,
+                          num.trees = 5000)
+
+#estimate the ATE
+ate_sig(average_treatment_effect(CF_vst_b))
+
+###########################################################
+#########################confide###########################
+###########################################################
+
+#covariates: standardize continuous variables
+X_cfd_b <- ate_df %>% 
+  select(-'confide_2', -'ed_b_2', -'ed_yr_2') %>% 
+  mutate(across(
+    where(is.numeric) & !where(~ all(.x %in% c(0,1))),
+    scale
+  ))
+
+#outcome
+Y_cfd_b <- ate_df$confide_2
+
+#treatment: binarized education
+W_cfd_b <- ate_df$ed_b_2
+
+#fit a causal forest
+CF_cfd_b <- causal_forest(X_cfd_b, 
+                          Y_cfd_b,
+                          W_cfd_b,
+                          min.node.size = 100, 
+                          num.trees = 5000) 
+
+#estimate the ATE
+ate_sig(average_treatment_effect(CF_cfd_b)) 
+
