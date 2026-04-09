@@ -2,7 +2,7 @@
 
 Code accompanying the manuscript:
 
-Da-Woon Heo†, Eunjae Kim†, Sohyun Kang, Joon-Kyung Seong, Chi-Hun Kim, Heung-Il Suk*, and Eun Kyong Shin*
+Da-Woon Heo†, Eunjae Kim†, Sohyun Kang, Joon-Kyung Seong, Heung-Il Suk*, and Eun Kyong Shin*
 *Decoding Multifaceted Cognitive Performance with Machine Learning:  
 Juxtaposing Social, Health-related, and Brain Factors using UK Biobank*
 
