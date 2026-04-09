@@ -1,10 +1,10 @@
-# Decoding Multifaceted Cognitive Performance with Machine Learning
+# Decoding Multifaceted Adult Fluid Intelligence with Machine Learning: Juxtaposing Social, Medical, and Brain Factors using UK Biobank
 
 Code accompanying the manuscript:
 
 Da-Woon Heo†, Eunjae Kim†, Sohyun Kang, Joon-Kyung Seong, Heung-Il Suk*, and Eun Kyong Shin*
-*Decoding Multifaceted Cognitive Performance with Machine Learning:  
-Juxtaposing Social, Health-related, and Brain Factors using UK Biobank*
+*Decoding Multifaceted Adult Fluid Intelligence with Machine Learning:
+Juxtaposing Social, Medical, and Brain Factors using UK Biobank*
 
 † Equal contribution; * Corresponding authors
 
