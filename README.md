@@ -1,4 +1,4 @@
-# Decoding Multifaceted Adult Fluid Intelligence with Machine Learning: Juxtaposing Social, Medical, and Brain Factors using UK Biobank
+# Social factors dominate adult intelligence prediction over health and brain features
 
 Code accompanying the manuscript:
 
