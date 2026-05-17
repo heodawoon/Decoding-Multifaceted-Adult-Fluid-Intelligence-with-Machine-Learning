@@ -5,6 +5,13 @@ library(grf) #for ATE (causal forest)
 
 df <- read.csv('Step4_4_binarize_disease_column.csv')
 
+#binarize variables 
+df <- df %>% mutate(ed_b_2 = ifelse(ed_2 >= 7, 1, 0),
+                    emp_b_2 = ifelse(emp_2 >= 2, 0, ifelse(emp_b >= 1, 1, NA),
+                    income_fam_2 = ifelse(X738.2.0 >= 1, X738.2.0, NA)              
+                   )
+
+
 ####################logit######################
 
 #logistic regression on fluid intelligence to validate feature importance results from XGBoost
@@ -14,7 +21,7 @@ df <- read.csv('Step4_4_binarize_disease_column.csv')
 df_logit <- glm(fluid_2_p10 ~ 
                   scale(ed_yr_2) + scale(met_2) + scale(age_2) +
                   scale(alcohol_2) + ethnicity_b_2 +
-                  scale(income_dfm_2) + scale(X25092.2.0) + gender +
+                  scale(income_fam_2) + scale(X25092.2.0) + gender +
                   scale(X25059.2.0) + scale(X25068.2.0) +
                   scale(X25094.2.0) + emp_b_2 +
                   scale(X25095.2.0) + scale(frnd_sat_2) + 
@@ -100,7 +107,7 @@ auc(roc_obj_ed)
 #extracting significant features from the all-feature XGBoost set model
 #mutate binary education variable
 ate_df <- df %>% 
-  dplyr::select(income_dfm_2, bmi_2, frnd_sat_2, met_2,
+  dplyr::select(income_fam_2, bmi_2, frnd_sat_2, met_2,
                 social_act_n_2, X25059.2.0, alcohol_2,
                 social_act_2_pub, X25068.2.0, social_act_2_other,
                 social_act_2_education, smoke_status_2, 
