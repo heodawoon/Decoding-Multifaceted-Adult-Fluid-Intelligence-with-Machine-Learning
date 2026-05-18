@@ -6,8 +6,9 @@ library(grf) #for ATE (causal forest)
 df <- read.csv('Step4_4_binarize_disease_column.csv')
 
 #binarize variables 
-df <- df %>% mutate(ed_b_2 = ifelse(ed_2 >= 7, 1, 0),
-                    emp_b_2 = ifelse(emp_2 >= 2, 0, ifelse(emp_b >= 1, 1, NA),
+df <- df %>% mutate(ethnicity_b_2 = ifelse(ethnicity_0 >= 2, 1, 0),
+                    emp_b_2 = ifelse(emp_2 >= 2, 0, 1),
+                    ed_b_2 = ifelse(ed_yr_2 >= 20, 1, 0)
                     income_fam_2 = ifelse(X738.2.0 >= 1, X738.2.0, NA)              
                    )
 
